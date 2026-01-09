@@ -31,7 +31,7 @@ export function StoryCard({ story, rank, topComment }: StoryCardProps) {
   const hnUrl = `https://news.ycombinator.com/item?id=${story.id}`;
 
   return (
-    <article className="h-screen w-full snap-start relative flex flex-col justify-center items-center p-6 md:p-8 bg-gradient-to-b from-gray-900 via-gray-900 to-black text-white overflow-hidden select-none">
+    <article className="h-screen w-full snap-start snap-always relative flex flex-col justify-center items-center p-6 md:p-8 bg-gradient-to-b from-gray-900 via-gray-900 to-black text-white overflow-hidden select-none">
       
       {/* Title Area */}
       <div className="z-10 flex flex-col items-center gap-6 max-w-5xl w-full text-center -mt-20">
