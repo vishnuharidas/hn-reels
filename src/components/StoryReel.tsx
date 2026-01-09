@@ -15,6 +15,8 @@ export function StoryReel() {
   const [nextIndex, setNextIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [ogData, setOgData] = useState<Record<number, string>>({});
+  const [activeIndex, setActiveIndex] = useState(0);
 
   // 1. Fetch all IDs on mount
   useEffect(() => {
@@ -56,6 +58,13 @@ export function StoryReel() {
     if (!containerRef.current || loading || allIds.length === 0) return;
 
     const { scrollTop, clientHeight, scrollHeight } = containerRef.current;
+    
+    // Update active index
+    const newIndex = Math.round(scrollTop / clientHeight);
+    if (newIndex !== activeIndex) {
+        setActiveIndex(newIndex);
+    }
+
     // Calculate index based on scroll position (approx)
     // Actually, simpler to just check distance to bottom
     const distanceToBottom = scrollHeight - (scrollTop + clientHeight);
@@ -64,7 +73,7 @@ export function StoryReel() {
     if (distanceToBottom < threshold) {
       loadMoreStories(allIds, nextIndex);
     }
-  }, [allIds, loading, nextIndex]);
+  }, [allIds, loading, nextIndex, activeIndex]);
 
   // 3. Keyboard Navigation
   useEffect(() => {
@@ -94,6 +103,41 @@ export function StoryReel() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  // 4. Progressively fetch OG data
+  useEffect(() => {
+    const fetchOg = async () => {
+        // Fetch for current index + next 3
+        for (let i = activeIndex; i < activeIndex + 4; i++) {
+            if (!stories[i]) continue;
+            
+            const story = stories[i];
+            // Skip if no URL or already fetched
+            if (!story.url || ogData[story.id]) continue;
+
+            try {
+                // Using microlink.io free plan for metadata
+                const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(story.url)}&filter=description`);
+                const data = await res.json();
+                
+                if (data.status === 'success' && data.data?.description) {
+                    setOgData(prev => ({ ...prev, [story.id]: data.data.description }));
+                } else {
+                    // Mark as fetched but empty to avoid retrying immediately
+                    setOgData(prev => ({ ...prev, [story.id]: '' }));
+                }
+            } catch (e) {
+                console.error("OG Fetch error", e);
+                // Mark as fetched (empty) to avoid loops
+                setOgData(prev => ({ ...prev, [story.id]: '' })); 
+            }
+        }
+    };
+
+    if (stories.length > 0) {
+        fetchOg();
+    }
+  }, [activeIndex, stories, ogData]);
+
   if (initialLoad) {
     return (
         <div className="h-screen w-full flex flex-col items-center justify-center bg-black text-white">
@@ -118,7 +162,12 @@ export function StoryReel() {
       `}</style>
 
       {stories.map((story, index) => (
-        <StoryCard key={story.id} story={story} rank={index + 1} />
+        <StoryCard 
+            key={story.id} 
+            story={story} 
+            rank={index + 1} 
+            ogDescription={ogData[story.id]}
+        />
       ))}
       
       {loading && (
