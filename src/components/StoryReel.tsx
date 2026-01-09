@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { fetchTopStoryIds, fetchStories, Story } from '@/lib/api';
+import { fetchTopStoryIds, fetchStories, fetchComment, Story } from '@/lib/api';
 import { StoryCard } from './StoryCard';
 import { Loader2 } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export function StoryReel() {
   const [nextIndex, setNextIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
-  const [ogData, setOgData] = useState<Record<number, string>>({});
+  const [topComments, setTopComments] = useState<Record<number, string>>({});
   const [activeIndex, setActiveIndex] = useState(0);
 
   // 1. Fetch all IDs on mount
@@ -103,40 +103,38 @@ export function StoryReel() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // 4. Progressively fetch OG data
+  // 4. Progressively fetch Top Comment
   useEffect(() => {
-    const fetchOg = async () => {
+    const fetchTopComment = async () => {
         // Fetch for current index + next 3
         for (let i = activeIndex; i < activeIndex + 4; i++) {
             if (!stories[i]) continue;
             
             const story = stories[i];
-            // Skip if no URL or already fetched
-            if (!story.url || ogData[story.id]) continue;
+            // Skip if already fetched or no kids
+            if (topComments[story.id] || !story.kids || story.kids.length === 0) continue;
 
             try {
-                // Using microlink.io free plan for metadata
-                const res = await fetch(`https://api.microlink.io?url=${encodeURIComponent(story.url)}&filter=description`);
-                const data = await res.json();
+                // Fetch the first comment
+                const firstCommentId = story.kids[0];
+                const comment = await fetchComment(firstCommentId);
                 
-                if (data.status === 'success' && data.data?.description) {
-                    setOgData(prev => ({ ...prev, [story.id]: data.data.description }));
+                if (comment && comment.text) {
+                    setTopComments(prev => ({ ...prev, [story.id]: comment.text || '' }));
                 } else {
-                    // Mark as fetched but empty to avoid retrying immediately
-                    setOgData(prev => ({ ...prev, [story.id]: '' }));
+                    setTopComments(prev => ({ ...prev, [story.id]: '' }));
                 }
             } catch (e) {
-                console.error("OG Fetch error", e);
-                // Mark as fetched (empty) to avoid loops
-                setOgData(prev => ({ ...prev, [story.id]: '' })); 
+                console.error("Comment Fetch error", e);
+                setTopComments(prev => ({ ...prev, [story.id]: '' })); 
             }
         }
     };
 
     if (stories.length > 0) {
-        fetchOg();
+        fetchTopComment();
     }
-  }, [activeIndex, stories, ogData]);
+  }, [activeIndex, stories, topComments]);
 
   if (initialLoad) {
     return (
@@ -166,7 +164,7 @@ export function StoryReel() {
             key={story.id} 
             story={story} 
             rank={index + 1} 
-            ogDescription={ogData[story.id]}
+            topComment={topComments[story.id]}
         />
       ))}
       

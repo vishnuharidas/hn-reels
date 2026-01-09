@@ -7,10 +7,10 @@ import { formatDistanceToNow } from 'date-fns';
 interface StoryCardProps {
   story: Story;
   rank: number;
-  ogDescription?: string;
+  topComment?: string;
 }
 
-export function StoryCard({ story, rank, ogDescription }: StoryCardProps) {
+export function StoryCard({ story, rank, topComment }: StoryCardProps) {
   let timeAgo = '';
   try {
     timeAgo = formatDistanceToNow(new Date(story.time * 1000), { addSuffix: true });
@@ -51,10 +51,11 @@ export function StoryCard({ story, rank, ogDescription }: StoryCardProps) {
           )}
         </h1>
 
-        {ogDescription && (
-            <p className="max-w-3xl text-sm md:text-lg text-gray-300/90 leading-relaxed font-medium line-clamp-3 md:line-clamp-4">
-                {ogDescription}
-            </p>
+        {topComment && (
+            <div 
+                className="w-full max-w-3xl text-lg md:text-2xl text-white/60 leading-relaxed font-medium line-clamp-3 md:line-clamp-4 italic break-words [&_pre]:whitespace-pre-wrap [&_pre]:break-words [&_a]:break-all"
+                dangerouslySetInnerHTML={{ __html: `&quot;${topComment}&quot;` }}
+            />
         )}
         
         <div className="flex flex-col items-center gap-4">

@@ -10,6 +10,7 @@ export interface Story {
   type: string;
   dead?: boolean;
   deleted?: boolean;
+  kids?: number[];
 }
 
 const HN_BASE_URL = 'https://hacker-news.firebaseio.com/v0';
@@ -33,4 +34,8 @@ export async function fetchStory(id: number): Promise<Story | null> {
 export async function fetchStories(ids: number[]): Promise<Story[]> {
   const stories = await Promise.all(ids.map(fetchStory));
   return stories.filter((s): s is Story => s !== null && s.type === 'story' && !s.dead && !s.deleted);
+}
+
+export async function fetchComment(id: number): Promise<Story | null> {
+    return fetchStory(id);
 }
