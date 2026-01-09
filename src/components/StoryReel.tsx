@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { fetchTopStoryIds, fetchStories, fetchComment, Story } from '@/lib/api';
 import { StoryCard } from './StoryCard';
-import { Loader2, Settings, Timer, X, Play, Pause, Circle, Maximize, Minimize, Sun, Moon, Type, Info } from 'lucide-react';
+import { Loader2, Settings, X, Sun, Moon, Type, Info } from 'lucide-react';
 
 const BATCH_SIZE = 20;
 const LOAD_TRIGGER_INDEX_OFFSET = 5; // Load more when 5 items from end
@@ -20,22 +20,13 @@ export function StoryReel() {
   
   // Settings State
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [autoScrollEnabled, setAutoScrollEnabled] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [fontFamily, setFontFamily] = useState<'sans' | 'serif'>('sans');
   const [showAbout, setShowAbout] = useState(false);
-  const AUTO_SCROLL_INTERVAL = 5000; // 5 seconds
 
   // Detect mobile
   useEffect(() => {
-    const checkMobile = () => {
-        setIsMobile(window.innerWidth < 768 || 'ontouchstart' in window);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    // Only used for theme/layout adjustments if needed in future
   }, []);
 
   // 1. Fetch all IDs on mount
@@ -132,42 +123,6 @@ export function StoryReel() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Fullscreen Logic
-  const toggleFullscreen = () => {
-    if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().then(() => {
-            setIsFullscreen(true);
-        }).catch(err => {
-            console.error(`Error attempting to enable fullscreen: ${err.message}`);
-        });
-    } else {
-        if (document.exitFullscreen) {
-            document.exitFullscreen();
-            setIsFullscreen(false);
-        }
-    }
-  };
-
-  // Listen for fullscreen change events (e.g. user presses Esc)
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
-    };
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, []);
-
-  // Auto Scroll Logic
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (autoScrollEnabled) {
-        interval = setInterval(() => {
-            scrollToStory(activeIndex + 1);
-        }, AUTO_SCROLL_INTERVAL);
-    }
-    return () => clearInterval(interval);
-  }, [autoScrollEnabled, activeIndex, scrollToStory]);
-
   // 4. Progressively fetch Top Comment
   useEffect(() => {
     const fetchTopComment = async () => {
@@ -243,35 +198,6 @@ export function StoryReel() {
       
       {/* Action Buttons (Bottom-Right, stacked) */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3">
-          {/* Fullscreen Exit Indicator - Desktop Only */}
-          {!isMobile && isFullscreen && (
-            <button
-                onClick={toggleFullscreen}
-                className={`flex items-center gap-2 px-4 py-3 ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white hover:bg-white/20' : 'bg-black/10 border-black/10 text-black hover:bg-black/20'} backdrop-blur-md border rounded-full transition-all shadow-lg active:scale-95 group`}
-                title="Exit Full Screen"
-            >
-                 <div className="relative flex items-center gap-2">
-                     <Minimize size={18} />
-                     <span className="text-sm font-bold font-mono tracking-tighter hidden group-hover:block">Exit</span>
-                 </div>
-            </button>
-          )}
-
-          {/* Auto Scroll Indicator */}
-          {autoScrollEnabled && (
-            <button
-                onClick={() => setAutoScrollEnabled(false)}
-                className={`flex items-center gap-2 px-4 py-3 ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white' : 'bg-black/10 border-black/10 text-black'} backdrop-blur-md border rounded-full hover:bg-red-500/20 hover:border-red-500/50 transition-all shadow-lg active:scale-95 group`}
-                title="Stop Auto Scroll"
-            >
-                 <div className="relative flex items-center gap-2">
-                     <Timer size={18} className="group-hover:hidden" />
-                     <Pause size={18} className="hidden group-hover:block text-red-400" />
-                     <span className="text-sm font-bold font-mono tracking-tighter">5s</span>
-                 </div>
-            </button>
-          )}
-
           {/* Settings Button */}
           <button 
             onClick={() => setIsMenuOpen(true)}
@@ -355,50 +281,6 @@ export function StoryReel() {
                             </button>
                         </div>
                     </div>
-
-                    {/* Timer Option */}
-                    <div className={`flex items-center justify-between p-3 ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'} rounded-xl border`}>
-                        <div className="flex items-center gap-3">
-                            <div className={`p-2 ${theme === 'dark' ? 'bg-green-500/20 text-green-400' : 'bg-green-500/10 text-green-600'} rounded-lg`}>
-                                <Timer size={18} />
-                            </div>
-                            <div>
-                                <p className="font-medium text-sm">Auto Scroll</p>
-                            </div>
-                        </div>
-                        <button
-                            onClick={() => setAutoScrollEnabled(!autoScrollEnabled)}
-                            className={`p-2 rounded-full transition-colors ${
-                                autoScrollEnabled 
-                                    ? 'bg-green-500 text-white hover:bg-green-600' 
-                                    : (theme === 'dark' ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-black/10 text-gray-500 hover:bg-black/20')
-                            }`}
-                        >
-                            {autoScrollEnabled ? <Pause size={18} /> : <Play size={18} />}
-                        </button>
-                    </div>
-
-                    {/* Fullscreen Option - Desktop Only */}
-                    {!isMobile && (
-                        <div className={`flex items-center justify-between p-3 ${theme === 'dark' ? 'bg-white/5 border-white/5' : 'bg-black/5 border-black/5'} rounded-xl border`}>
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 ${theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-500/10 text-purple-600'} rounded-lg`}>
-                                    {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
-                                </div>
-                                <p className="font-medium text-sm">Full Screen</p>
-                            </div>
-                            <button
-                                onClick={toggleFullscreen}
-                                className={`p-2 rounded-full transition-colors ${
-                                    isFullscreen 
-                                        ? 'bg-purple-500 text-white hover:bg-purple-600' 
-                                        : (theme === 'dark' ? 'bg-white/10 text-gray-400 hover:bg-white/20' : 'bg-black/10 text-gray-500 hover:bg-black/20')
-                                }`}
-                            >
-                                {isFullscreen ? <Minimize size={18} /> : <Maximize size={18} />}
-                            </button>
-                        </div>
-                    )}
 
                     {/* About Option */}
                     <button 
